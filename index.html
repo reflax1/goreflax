@@ -62,7 +62,7 @@
 
             <div class="card p-5 bg-gray-800 mb-4 text-white">
                  <ul class="text-[11px] space-y-2 text-gray-300">
-                    <li><i class="fas fa-check-circle text-green-500 mr-1"></i> ১৫০০ টাকা হলেই উইথড্র দেওয়া যাবে।</li>
+                    <li><i class="fas fa-check-circle text-green-500 mr-1"></i> ১৫০০ টাকা হলেই উইথড্র দেওয়া যাবে।</li>
                     <li><i class="fas fa-lock text-yellow-500 mr-1"></i> কমপক্ষে ১৬টি রেফার থাকতে হবে।</li>
                     <li><i class="fas fa-check-circle text-green-500 mr-1"></i> Telegram ও YouTube সাবস্ক্রাইব মাস্ট।</li>
                 </ul>
@@ -93,7 +93,7 @@
                     </div>
                     <div>
                         <h4 class="font-bold text-sm text-gray-800">Telegram Channel</h4>
-                        <p class="text-[10px] text-blue-600 font-bold uppercase tracking-tight italic">পেমেন্ট আপডেট পেতে জয়েন করুন</p>
+                        <p class="text-[10px] text-blue-600 font-bold uppercase tracking-tight italic">পেমেন্ট আপডেট পেতে জয়েন করুন</p>
                     </div>
                 </div>
                 <a href="https://t.me/REFLAX_1" target="_blank" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-xs font-bold active:scale-90 shadow-sm">JOIN</a>
@@ -188,7 +188,6 @@
     </nav>
 
     <script>
-        // ১. টেলিগ্রাম সেটআপ
         const tele = window.Telegram.WebApp;
         tele.expand();
 
@@ -205,7 +204,6 @@
         if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
         const db = firebase.database();
 
-        // ২. ইউজার আইডি হ্যান্ডলিং
         let userId = tele.initDataUnsafe?.user?.id?.toString() || localStorage.getItem('reflax_id') || ('RF' + Math.floor(1000 + Math.random() * 9999));
         localStorage.setItem('reflax_id', userId);
 
@@ -214,38 +212,46 @@
 
         window.onload = function() {
             document.getElementById('display-user-id').innerText = "ID: " + userId;
-            
-            // ৩. স্মার্ট রেফার লিঙ্ক (বট থাকলে বটের নাম দিন)
             let botUsername = "REFLAX1BOT"; 
             document.getElementById('refer-link').value = "https://t.me/" + botUsername + "?start=" + userId;
             
-            checkReferral(); // রেফারেল চেক
-            loadFirebaseData();
+            // ১. প্রথমেই ইউজারের ডাটা চেক করা
+            db.ref('users/' + userId).once('value', (snap) => {
+                if (!snap.exists()) {
+                    // ইউজার নতুন হলে রেফার চেক করা হবে
+                    handleNewUserReferral();
+                } else {
+                    // ইউজার পুরাতন হলে ডাটা লোড হবে
+                    loadFirebaseData();
+                }
+            });
+            
             loadHistory();
         };
 
-        // ৪. রেফারেল কাউন্ট করার স্মার্ট ফাংশন
-        function checkReferral() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const refBy = urlParams.get('tgWebAppStartParam') || urlParams.get('ref') || urlParams.get('start');
+        // রেফারেল হ্যান্ডলিং ফাংশন
+        function handleNewUserReferral() {
+            const refBy = tele.initDataUnsafe?.start_param;
             
-            if (refBy && refBy !== userId && !localStorage.getItem('is_referred_already')) {
-                db.ref('users/' + refBy + '/refers').transaction((current) => {
-                    return (current || 0) + 1;
-                }).then(() => {
-                    localStorage.setItem('is_referred_already', 'true');
-                });
-            }
+            // ১. আগে নিজের ডাটা তৈরি করা (যাতে লুপ না হয়)
+            db.ref('users/' + userId).set(userData).then(() => {
+                // ২. রেফারার আইডি থাকলে তার ব্যালেন্স/কাউন্ট বাড়ানো
+                if (refBy && refBy !== userId) {
+                    db.ref('users/' + refBy + '/refers').transaction((current) => {
+                        return (current || 0) + 1;
+                    });
+                    console.log("Refer added to: " + refBy);
+                }
+                loadFirebaseData(); // তারপর ডাটা লোড করা
+            });
         }
 
         function loadFirebaseData() {
             db.ref('users/' + userId).on('value', (snap) => {
                 if(snap.exists()) {
                     userData = snap.val();
-                } else {
-                    db.ref('users/' + userId).set(userData);
+                    updateUI();
                 }
-                updateUI();
             });
         }
 
@@ -268,6 +274,7 @@
             }
         }
 
+        // --- অন্যান্য ফাংশন আগের মতোই থাকবে ---
         function showAd() {
             const btn = document.getElementById('adBtn');
             if (typeof show_10611708 === 'function') {
@@ -279,7 +286,7 @@
                     btn.disabled = false; btn.innerText = "Watch";
                 });
             } else {
-                alert("অ্যাড সার্ভিস লোড হয়নি।");
+                alert("অ্যাড সার্ভিস লোড হয়নি।");
             }
         }
 
@@ -318,7 +325,7 @@
                 userId, method: selectedPayment, number: num, amount: amt, status: 'Pending', date: new Date().toLocaleDateString()
             }).then(() => {
                 db.ref('users/' + userId + '/balance').set(userData.balance - amt);
-                alert("রিকোয়েস্ট সফল হয়েছে!");
+                alert("রিকোয়েস্ট সফল হয়েছে!");
             });
         }
 
@@ -356,4 +363,4 @@
         }
     </script>
 </body>
-</html>
+                            </html>
